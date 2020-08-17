@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -218,6 +219,34 @@ func (s *RepositoriesService) GetCommitSHA1(ctx context.Context, owner, repo, re
 	}
 
 	return buf.String(), resp, nil
+}
+
+// GetCommitPullRequests fetches the list of PRs containing the specified SHA1
+//
+// GitHub API docs: https://developer.github.com/v3/repos/commits/#list-pull-requests-associated-with-a-commit
+func (s *RepositoriesService) GetCommitPullRequests(ctx context.Context, owner, repo, sha string, opts *PullRequestListOptions) ([]*PullRequest, *Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/commits/%v/pulls", owner, repo, sha)
+	u, err := addOptions(u, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	req, err := s.client.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	acceptHeaders := []string{mediaTypeLockReasonPreview}
+	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
+
+	var pulls []*PullRequest
+	resp, err := s.client.Do(ctx, req, &pulls)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return pulls, resp, nil
 }
 
 // CompareCommits compares a range of commits with each other.

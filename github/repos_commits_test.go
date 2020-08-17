@@ -301,6 +301,33 @@ func TestRepositoriesService_TrailingPercent_GetCommitSHA1(t *testing.T) {
 	}
 }
 
+func TestRepositoriesService_GetCommitPullRequests(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/repos/o/r/commits/1/pulls", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"state": "open",
+		})
+		fmt.Fprint(w, `[{"id":1},{"id":2}]`)
+	})
+
+	opts := &PullRequestListOptions{State: "open"}
+	reviews, _, err := client.Repositories.GetCommitPullRequests(context.Background(), "o", "r", "1", opts)
+	if err != nil {
+		t.Errorf("GetCommitPullRequests returned error: %v", err)
+	}
+
+	want := []*PullRequest{
+		{ID: Int64(1)},
+		{ID: Int64(2)},
+	}
+	if !reflect.DeepEqual(reviews, want) {
+		t.Errorf("PullRequests.ListReviews returned %+v, want %+v", reviews, want)
+	}
+}
+
 func TestRepositoriesService_CompareCommits(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
